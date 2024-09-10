@@ -35,8 +35,13 @@ function convertTransactionsToChartData(transactions: Transaction[]): {
   const timestamps = Object.values(chartData).flatMap((userData) =>
     userData.data.map((dataPoint) => dataPoint.timestamp.getTime())
   );
-  const minTimestamp = Math.min(...timestamps);
-  const maxTimestamp = Math.max(...timestamps);
+
+
+  const currentTime = Date.now();
+  const defaultStartTime = currentTime - 12 * 60 * 60 * 1000; // 12 hours ago
+
+  const minTimestamp = timestamps.length > 0 ? Math.min(...timestamps) : defaultStartTime;
+  const maxTimestamp = timestamps.length > 0 ? Math.max(...timestamps) : currentTime;
 
   const timeRange = maxTimestamp - minTimestamp;
   const padding = 0.1; // Adjust the padding factor as needed

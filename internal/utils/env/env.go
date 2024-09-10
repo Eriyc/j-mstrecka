@@ -26,7 +26,7 @@ func DefaultConfig() Config {
 	return Config{
 		DiscordToken: "",
 		Guild:        "",
-		DbUrl:        fmt.Sprintf("file:%s", escaped),
+		DbUrl:        escaped,
 	}
 }
 

@@ -47,12 +47,20 @@ func (m *SqliteMiddleware) Connect() (err error) {
 	cfg := m.Container.Get(static.DiConfig).(env.Config)
 
 	_, err = os.Stat(cfg.DbUrl)
-	if err != nil {
-		fmt.Printf("could not find database file: %v, creating it...\n", err)
-		os.WriteFile(cfg.DbUrl, []byte{}, 0644)
+	if os.IsNotExist(err) {
+		f, err := os.OpenFile(cfg.DbUrl, os.O_RDONLY|os.O_CREATE, 0666)
+
+		fmt.Printf("f: %v\n", f)
+
+		if err != nil {
+			fmt.Printf("could not create database file: %v\n", err)
+			return err
+		}
+		fmt.Printf("could not find database file, creating it at %s\n", cfg.DbUrl)
+		f.Close()
 	}
 
-	if m.Db, err = sql.Open("libsql", cfg.DbUrl); err != nil {
+	if m.Db, err = sql.Open("libsql", fmt.Sprintf("file:%s", cfg.DbUrl)); err != nil {
 		fmt.Printf("could not open database: %v\n", err)
 		return err
 	}
