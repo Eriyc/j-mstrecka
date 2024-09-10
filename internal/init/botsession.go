@@ -16,7 +16,8 @@ func InitDiscordBotSession(container di.Container) (release func()) {
 	cfg := container.Get(static.DiConfig).(env.Config)
 
 	if cfg.DiscordToken == "" {
-		log.Fatalf("Discord token is not set")
+		log.Printf("Discord token is not set")
+		return
 	}
 
 	err := snowflakenodes.Setup()
