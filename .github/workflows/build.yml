@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         build:
-          - name: "jamstrecka"
+          - name: "jamstrecka-amd64"
             platform: "linux/amd64"
             os: "ubuntu-latest"
 
@@ -27,8 +27,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-      - uses: oven-sh/setup-bun@v2    
-      
+      - uses: oven-sh/setup-bun@v2
+
       - name: Build wails
         uses: dAppServer/wails-build-action@v2.2
         id: build
@@ -37,8 +37,18 @@ jobs:
           build-platform: ${{ matrix.build.platform }}
           package: false
           go-version: "1.23"
+      - name: release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          draft: true
+          prerelease: false
+          release_name: v
+          tag_name: ${{ github.ref }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux-artifact
-          path: /home/runner/work/j-mstrecka/j-mstrecka/build/bin/jamstrecka
+          path: /home/runner/work/j-mstrecka/j-mstrecka/build/bin/jamstrecka-amd64
