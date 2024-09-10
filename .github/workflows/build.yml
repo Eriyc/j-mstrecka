@@ -48,7 +48,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-release-asset@v1
         with:
-          name: linux-artifact
-          path: /home/runner/work/j-mstrecka/j-mstrecka/build/bin/jamstrecka-amd64
+          asset_content_type: "application/octet-stream"
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/${{ matrix.build.name }}
+          asset_name: ${{ matrix.build.name }}
