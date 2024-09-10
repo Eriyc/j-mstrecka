@@ -43,10 +43,10 @@ jobs:
         with:
           draft: true
           prerelease: false
-          release_name: v
+          release_name: ${{ github.ref_name }}
           tag_name: ${{ github.ref }}
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.PAT }}
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
