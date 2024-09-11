@@ -52,5 +52,5 @@ jobs:
         with:
           asset_content_type: "application/octet-stream"
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/${{ matrix.build.name }}
+          asset_path: ./build/bin/${{ matrix.build.name }}
           asset_name: ${{ matrix.build.name }}

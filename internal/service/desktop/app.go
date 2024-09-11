@@ -2,9 +2,12 @@ package desktop
 
 import (
 	"context"
+	"fmt"
 	"gostrecka/internal/utils/static"
+	"os"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/emersion/go-autostart"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -15,6 +18,26 @@ type DiscordCheck struct {
 
 func (a *App) Startup(ctx context.Context) {
 	a.Ctx = ctx
+
+	// register autostart
+	ex, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+
+	auto := &autostart.App{
+		Name: "jamkstrecka",
+		Exec: []string{ex},
+	}
+
+	if !auto.IsEnabled() {
+		err := auto.Enable()
+		if err != nil {
+			fmt.Printf("Could not enable autostart: %v", err)
+			return
+		}
+	}
+
 }
 
 func (a *App) OnDomReady(ctx context.Context) {

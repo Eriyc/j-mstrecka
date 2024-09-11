@@ -1,6 +1,10 @@
 package commands
 
 import (
+	"fmt"
+	"os"
+	"runtime"
+
 	"github.com/bwmarrin/discordgo"
 	"github.com/zekrotja/ken"
 )
@@ -38,10 +42,16 @@ func (c *HelpCommand) IsDmCapable() bool {
 
 func (c *HelpCommand) Run(ctx ken.Context) (err error) {
 
+	hostname, _ := os.Hostname()
+
 	var embed = &discordgo.MessageEmbed{
 		Title:       "Hjälp",
 		Description: "Jag är dum och kommer inte ihåg vad jag ska göra <:(",
 		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:  "Vart körs botten?",
+				Value: fmt.Sprintf("På %s %s (v%s)", runtime.GOOS, hostname, runtime.Version()),
+			},
 			{
 				Name:   "/user create [user]",
 				Value:  "Registrerar ditt (eller någon annans) konto i systemet",
