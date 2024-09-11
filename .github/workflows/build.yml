@@ -49,6 +49,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT }}
       - name: Upload artifact
         uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
         with:
           asset_content_type: "application/octet-stream"
           upload_url: ${{ steps.create_release.outputs.upload_url }}
