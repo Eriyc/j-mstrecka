@@ -466,3 +466,91 @@ func (m *SqliteMiddleware) GetTransactionLeaderboard() (leaderboard []models.Tra
 
 	return
 }
+
+func (m *SqliteMiddleware) GetUserUpcs() (upcs []models.Upc, err error) {
+	rows, err := m.Db.Query(`
+		SELECT
+			id,
+			upc,
+			referable_type,
+			referable_id,
+			users.name AS referable_name
+		FROM
+			upcs
+		LEFT JOIN
+			users ON upcs.referable_id = users.id
+		WHERE
+			referable_type = 'user'
+		ORDER BY
+			id ASC;
+	`)
+
+	if err != nil {
+		fmt.Printf("errro: %v\n", err)
+		return
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var upc models.Upc
+		err = rows.Scan(
+			&upc.ID,
+			&upc.Upc,
+			&upc.Referable,
+			&upc.ReferableId,
+		)
+
+		if err != nil {
+			fmt.Printf("errro: %v\n", err)
+			return
+		}
+
+		upcs = append(upcs, upc)
+	}
+
+	return
+}
+
+func (m *SqliteMiddleware) GetProductUpcs() (upcs []models.Upc, err error) {
+	rows, err := m.Db.Query(`
+		SELECT
+			id,
+			upc,
+			referable_type,
+			referable_id,
+			products.name AS referable_name
+		FROM
+			upcs
+		LEFT JOIN
+			products ON upcs.referable_id = products.id
+		WHERE
+			referable_type = 'product'
+		ORDER BY
+			id ASC;
+	`)
+
+	if err != nil {
+		fmt.Printf("errro: %v\n", err)
+		return
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var upc models.Upc
+		err = rows.Scan(
+			&upc.ID,
+			&upc.Upc,
+			&upc.Referable,
+			&upc.ReferableId,
+		)
+
+		if err != nil {
+			fmt.Printf("errro: %v\n", err)
+			return
+		}
+
+		upcs = append(upcs, upc)
+	}
+
+	return
+}

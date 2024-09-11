@@ -23,6 +23,8 @@ type Database interface {
 
 	/* UPCs */
 	GetUpcType(upc string) (lookup models.UpcLookup, err error)
+	GetUserUpcs() (upcs []models.Upc, err error)
+	GetProductUpcs() (upcs []models.Upc, err error)
 
 	/* Transactions */
 	Strecka(user models.User, productId int64, amount int64) error

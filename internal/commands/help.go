@@ -2,8 +2,11 @@ package commands
 
 import (
 	"fmt"
+	"gostrecka/internal/service/database"
+	"gostrecka/internal/utils/static"
 	"os"
 	"runtime"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/zekrotja/ken"
@@ -44,6 +47,20 @@ func (c *HelpCommand) Run(ctx ken.Context) (err error) {
 
 	hostname, _ := os.Hostname()
 
+	db := ctx.Get(static.DiDatabase).(database.Database)
+	upcRows, _ := db.GetUserUpcs()
+	productRows, _ := db.GetProductUpcs()
+
+	var users []string
+	for _, upc := range upcRows {
+		users = append(users, fmt.Sprintf("%s %s", upc.ReferableName, upc.Upc))
+	}
+
+	var products []string
+	for _, upc := range productRows {
+		products = append(products, fmt.Sprintf("%s %s", upc.ReferableName, upc.Upc))
+	}
+
 	var embed = &discordgo.MessageEmbed{
 		Title:       "Hjälp",
 		Description: "Jag är dum och kommer inte ihåg vad jag ska göra <:(",
@@ -65,6 +82,17 @@ func (c *HelpCommand) Run(ctx ken.Context) (err error) {
 			{
 				Name:   "/strecka <product> [amount] [user]",
 				Value:  "Streckar en produkt åt dig (eller någon annan)",
+				Inline: false,
+			},
+
+			{
+				Name:   "Uppslagningar",
+				Value:  strings.Join(users, "\n"),
+				Inline: false,
+			},
+			{
+				Name:   "Produkter",
+				Value:  strings.Join(products, "\n"),
 				Inline: false,
 			},
 		},
