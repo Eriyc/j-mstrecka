@@ -8,6 +8,7 @@ require (
 	github.com/adrg/xdg v0.5.0
 	github.com/bwmarrin/discordgo v0.28.1
 	github.com/bwmarrin/snowflake v0.3.0
+	github.com/emersion/go-autostart v0.0.0-20210130080809-00ed301c8e9a
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/sarulabs/di/v2 v2.5.1
 	github.com/tursodatabase/go-libsql v0.0.0-20240819180805-a9b092b8bc77
@@ -21,7 +22,6 @@ require (
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
-	github.com/emersion/go-autostart v0.0.0-20210130080809-00ed301c8e9a // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect

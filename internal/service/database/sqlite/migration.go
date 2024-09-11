@@ -2,10 +2,8 @@ package sqlite
 
 import (
 	"database/sql"
+	sqlite_migrations "gostrecka/internal/service/database/sqlite/migrations"
 	"log"
-	"os"
-	"path"
-	"slices"
 	"strings"
 )
 
@@ -24,6 +22,11 @@ func SetupMigrations(conn *sql.DB) error {
 	return nil
 }
 
+type Migration struct {
+	Name    string
+	Content string
+}
+
 func Migrate(conn *sql.DB) error {
 	err := SetupMigrations(conn)
 	if err != nil {
@@ -31,52 +34,21 @@ func Migrate(conn *sql.DB) error {
 		return err
 	}
 
-	var migrationPath = "./internal/service/database/sqlite/migrations"
-	// get from folder
-	files, err := os.ReadDir(migrationPath)
-	if err != nil {
-		return err
-	}
-
-	log.Printf("Found %d migrations", len(files))
-
-	commited, err := conn.Query("SELECT name FROM migrations")
-
-	if err != nil {
-		return err
-	}
-
-	var applied []string
-	for commited.Next() {
-		var name string
-		err = commited.Scan(&name)
-		if err != nil {
-			return err
-		}
-		applied = append(applied, name)
-
+	var files []Migration = []Migration{
+		{Name: "20240809205925_initial", Content: sqlite_migrations.MIGRATION1},
 	}
 
 	for _, file := range files {
-		if file.IsDir() {
+
+		row := conn.QueryRow("SELECT name FROM migrations WHERE name = ?", file.Name)
+		var name string
+		err = row.Scan(&name)
+
+		if err == nil {
+			log.Printf("Skipping migration %s", file.Name)
 			continue
 		}
-
-		fileName := file.Name()
-		filePath := path.Join(migrationPath, fileName)
-
-		fileName = strings.Split(fileName, ".")[0]
-		if slices.Contains(applied, fileName) {
-			continue
-		}
-
-		log.Printf("Applying migration %s", fileName)
-		b, err := os.ReadFile(filePath)
-
-		if err != nil {
-			return err
-		}
-		str := string(b)
+		str := string(file.Content)
 		stmts := strings.Split(str, ";\n\n")
 		tx, err := conn.Begin()
 		if err != nil {
@@ -85,23 +57,21 @@ func Migrate(conn *sql.DB) error {
 
 		for _, stmt := range stmts {
 			_, err = tx.Exec(stmt)
+			log.Default().Printf("Applying migration %s: %s", file.Name, stmt)
 			if err != nil {
 				tx.Rollback()
-				log.Fatalf("Error applying migration %s: %s", fileName, stmt)
+				log.Fatalf("Error applying migration %s: %s", file.Name, stmt)
 				return err
 			}
 		}
 
-		_, err = tx.Exec("INSERT INTO migrations (name) VALUES (?)", fileName)
+		_, err = tx.Exec("INSERT INTO migrations (name) VALUES (?)", file.Name)
 
 		if err != nil {
 			return err
 		}
 
-		err = tx.Commit()
-
-		return err
-
+		tx.Commit()
 	}
 
 	println("Migrations applied")
