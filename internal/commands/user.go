@@ -97,7 +97,7 @@ func (c *UserCommand) create(ctx ken.SubCommandContext) (err error) {
 		}
 	}
 
-	err = db.CreateUser(account.ID, account.Username)
+	err = db.CreateUser(account.ID, account.GlobalName)
 
 	if err != nil {
 		err = ctx.FollowUpEmbed(&discordgo.MessageEmbed{

@@ -48,6 +48,8 @@ func Migrate(conn *sql.DB) error {
 			log.Printf("Skipping migration %s", file.Name)
 			continue
 		}
+		err = nil
+
 		str := string(file.Content)
 		stmts := strings.Split(str, ";\n\n")
 		tx, err := conn.Begin()
