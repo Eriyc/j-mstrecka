@@ -39,6 +39,7 @@ func InitCommandHandler(container di.Container) (k *ken.Ken, err error) {
 		new(commands.StreckaCommand),
 		new(commands.ProductCommand),
 		new(commands.BalanceCommand),
+		new(commands.PrintCommand),
 	)
 
 	if err != nil {

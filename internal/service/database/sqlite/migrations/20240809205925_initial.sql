@@ -82,7 +82,7 @@ WITH credit_calculations AS (
 debt_calculations AS (
     SELECT
         u.id AS user_id,
-        COALESCE(ROUND(SUM(t.quantity * pp.purchase_price), 1), 0) AS total_debt_incurred
+        COALESCE(ROUND(SUM(t.quantity * pp.internal_price), 1), 0) AS total_debt_incurred
     FROM
         users u
     LEFT JOIN

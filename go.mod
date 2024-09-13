@@ -6,9 +6,11 @@ toolchain go1.23.0
 
 require (
 	github.com/adrg/xdg v0.5.0
+	github.com/boombuler/barcode v1.0.2
 	github.com/bwmarrin/discordgo v0.28.1
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/emersion/go-autostart v0.0.0-20210130080809-00ed301c8e9a
+	github.com/jung-kurt/gofpdf v1.16.2
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/sarulabs/di/v2 v2.5.1
 	github.com/tursodatabase/go-libsql v0.0.0-20240819180805-a9b092b8bc77

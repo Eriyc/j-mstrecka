@@ -273,7 +273,7 @@ func (m *SqliteMiddleware) Strecka(user models.User, productId int64, amount int
 	}
 
 	m.Db.Exec("INSERT INTO transactions (user_id, product_id, quantity, price_type, price_paid) VALUES ($1, $2, $3, 'internal', $4)",
-		user.ID, product.ID, amount, price.ID)
+		user.ID, product.ID, amount, price.InternalPrice)
 
 	return nil
 }
@@ -470,19 +470,19 @@ func (m *SqliteMiddleware) GetTransactionLeaderboard() (leaderboard []models.Tra
 func (m *SqliteMiddleware) GetUserUpcs() (upcs []models.Upc, err error) {
 	rows, err := m.Db.Query(`
 		SELECT
-			id,
-			upc,
-			referable_type,
-			referable_id,
+			u.id,
+			u.upc,
+			u.referable_type,
+			u.referable_id,
 			users.name AS referable_name
 		FROM
-			upcs
+			upcs u
 		LEFT JOIN
-			users ON upcs.referable_id = users.id
+			users ON u.referable_id = users.id
 		WHERE
-			referable_type = 'user'
+			u.referable_type = 'user'
 		ORDER BY
-			id ASC;
+			u.id ASC;
 	`)
 
 	if err != nil {
@@ -498,6 +498,7 @@ func (m *SqliteMiddleware) GetUserUpcs() (upcs []models.Upc, err error) {
 			&upc.Upc,
 			&upc.Referable,
 			&upc.ReferableId,
+			&upc.ReferableName,
 		)
 
 		if err != nil {
@@ -514,19 +515,19 @@ func (m *SqliteMiddleware) GetUserUpcs() (upcs []models.Upc, err error) {
 func (m *SqliteMiddleware) GetProductUpcs() (upcs []models.Upc, err error) {
 	rows, err := m.Db.Query(`
 		SELECT
-			id,
-			upc,
-			referable_type,
-			referable_id,
+			u.id,
+			u.upc,
+			u.referable_type,
+			u.referable_id,
 			products.name AS referable_name
 		FROM
-			upcs
+			upcs u
 		LEFT JOIN
-			products ON upcs.referable_id = products.id
+			products ON u.referable_id = products.id
 		WHERE
 			referable_type = 'product'
 		ORDER BY
-			id ASC;
+			u.id ASC;
 	`)
 
 	if err != nil {
@@ -542,6 +543,7 @@ func (m *SqliteMiddleware) GetProductUpcs() (upcs []models.Upc, err error) {
 			&upc.Upc,
 			&upc.Referable,
 			&upc.ReferableId,
+			&upc.ReferableName,
 		)
 
 		if err != nil {
