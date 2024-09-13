@@ -30,7 +30,7 @@ func (p *PrintCommand) Options() []*discordgo.ApplicationCommandOption {
 
 // Run implements ken.SlashCommand.
 func (p *PrintCommand) Run(ctx ken.Context) (err error) {
-	messageId := ctx.GetEvent().Message.ID
+	messageId := ctx.GetEvent().ID
 
 	db := ctx.Get(static.DiDatabase).(database.Database)
 
@@ -47,8 +47,14 @@ func (p *PrintCommand) Run(ctx ken.Context) (err error) {
 		products = append(products, pdf.BarcodeInfo{Number: upc.Upc, Label: upc.ReferableName})
 	}
 
-	pdf.GenerateBarcodePDF(users, fmt.Sprintf("%s-users.pdf", messageId))
-	pdf.GenerateBarcodePDF(products, fmt.Sprintf("%s-products.pdf", messageId))
+	err = pdf.GenerateBarcodePDF(users, fmt.Sprintf("%s-users.pdf", messageId))
+	if err != nil {
+		return ctx.RespondError(err.Error(), "Error generating user barcode PDF")
+	}
+	err = pdf.GenerateBarcodePDF(products, fmt.Sprintf("%s-products.pdf", messageId))
+	if err != nil {
+		return ctx.RespondError(err.Error(), "Error generating product barcode PDF")
+	}
 
 	userPDF, err := os.Open(fmt.Sprintf("%s-users.pdf", messageId))
 	if err != nil {
@@ -79,6 +85,9 @@ func (p *PrintCommand) Run(ctx ken.Context) (err error) {
 			},
 		},
 	})
+
+	os.Remove(fmt.Sprintf("%s-users.pdf", messageId))
+	os.Remove(fmt.Sprintf("%s-products.pdf", messageId))
 
 	return
 }
