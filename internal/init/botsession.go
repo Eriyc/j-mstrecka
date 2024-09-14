@@ -1,7 +1,6 @@
 package inits
 
 import (
-	"gostrecka/internal/utils/env"
 	"gostrecka/internal/utils/snowflakenodes"
 	"gostrecka/internal/utils/static"
 	"log"
@@ -13,7 +12,7 @@ import (
 func InitDiscordBotSession(container di.Container) (release func()) {
 	release = func() {}
 
-	cfg := container.Get(static.DiConfig).(env.Config)
+	cfg := container.Get(static.DiConfig).(interface{})
 
 	if cfg.DiscordToken == "" {
 		log.Printf("Discord token is not set")

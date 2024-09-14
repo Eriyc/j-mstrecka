@@ -3,14 +3,18 @@ package main
 import (
 	"embed"
 	"gostrecka/internal/utils/logger"
+	"gostrecka/services/discord/commands"
+	"gostrecka/services/env"
 	"log/slog"
 	"os"
 	"runtime"
 	"sync"
 	"time"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/lmittmann/tint"
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/zekrotja/ken"
 )
 
 //go:embed all:frontend/dist
@@ -18,7 +22,7 @@ var Assets embed.FS
 
 type SharedResources struct {
 	DB     *Database
-	Config *Config
+	Config env.Config
 	Logger *slog.Logger
 }
 
@@ -66,9 +70,22 @@ func main() {
 
 func initSharedResources() *SharedResources {
 	logger := NewLogger()
+
+	configStore, err := env.NewConfigStore(logger.With("service", "CONFIG"))
+	if err != nil {
+		logger.Error("Failed to create config store", "error", err, "service", "CONFIG")
+		os.Exit(1)
+	}
+
+	cfg, err := configStore.Config()
+	if err != nil {
+		configStore.Logger.Error("Failed to read config", "error", err)
+		os.Exit(1)
+	}
+
 	return &SharedResources{
 		DB:     NewDatabase(logger),
-		Config: NewConfig(logger),
+		Config: cfg,
 		Logger: logger,
 	}
 }
@@ -81,6 +98,10 @@ func createApplication(shared *SharedResources, appCtx *AppContext) *application
 			DisableLogging: true,
 		},
 		Logger: shared.Logger.With("service", "APP"),
+		OnShutdown: func() {
+			shared.Logger.Info("Shutting down application...")
+			appCtx.Discord.session.Close()
+		},
 		// You can add services here if needed
 	})
 }
@@ -102,22 +123,63 @@ func createMainWindow(app *application.App) {
 }
 
 type DiscordService struct {
-	shared *SharedResources
-	appCtx *AppContext
-	logger *slog.Logger
+	shared  *SharedResources
+	appCtx  *AppContext
+	logger  *slog.Logger
+	session *discordgo.Session
 }
 
 func NewDiscordService(shared *SharedResources, appCtx *AppContext) *DiscordService {
+	shared.Logger.Info("Discord service starting...")
+
+	session, err := discordgo.New("Bot " + shared.Config.DiscordToken)
+	if err != nil {
+		shared.Logger.Error("Failed to create discord session", "error", err)
+		return nil
+	}
+
 	return &DiscordService{
-		shared: shared,
-		appCtx: appCtx,
-		logger: shared.Logger.With("service", "discord"),
+		shared:  shared,
+		appCtx:  appCtx,
+		logger:  shared.Logger.With("service", "DISCORD"),
+		session: session,
 	}
 }
 
+func (d *DiscordService) Get(key string) interface{} {
+	// help
+	return interface{}
+}
+
 func (d *DiscordService) Start() {
-	d.logger.Info("Discord service started")
-	// Initialize and start your Discord bot here
+
+	k, err := ken.New(d.session, ken.Options{})
+	if err != nil {
+		d.logger.Error("Failed to create ken", "error", err)
+		return
+	}
+
+	err = k.RegisterCommands(
+		new(commands.HelpCommand),
+		new(commands.UserCommand),
+		new(commands.StreckaCommand),
+		new(commands.ProductCommand),
+		new(commands.BalanceCommand),
+		new(commands.PrintCommand),
+	)
+
+	if err != nil {
+		d.logger.Error("Failed to register commands", "error", err)
+		return
+	}
+
+	err = d.session.Open()
+	if err != nil {
+		d.logger.Error("Failed to open discord session", "error", err)
+		return
+	}
+
+	d.logger.Info("Discord service started", "bot_name", d.session.State.Ready.User.Username)
 }
 
 type Database struct {
@@ -128,19 +190,11 @@ func NewDatabase(logger *slog.Logger) *Database {
 	return &Database{logger: logger.With("service", "DATABASE")}
 }
 
-type Config struct {
-	logger *slog.Logger
-}
-
-func NewConfig(logger *slog.Logger) *Config {
-	return &Config{logger: logger.With("service", "CONFIG")}
-}
-
 func NewLogger() *slog.Logger {
 	w := os.Stdout
 
 	opts := &tint.Options{
-		Level:      slog.LevelInfo,
+		Level:      slog.LevelDebug,
 		TimeFormat: time.TimeOnly,
 		NoColor:    false,
 		AddSource:  false,
