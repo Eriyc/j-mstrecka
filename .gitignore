@@ -3,4 +3,5 @@ node_modules
 frontend/dist
 .env
 
-/jamkstrecka
+jamkstrecka
+bin
