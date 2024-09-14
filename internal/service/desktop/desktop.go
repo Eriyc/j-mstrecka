@@ -1,7 +1,6 @@
 package desktop
 
 import (
-	"context"
 	"embed"
 	"gostrecka/internal/models"
 	"gostrecka/internal/service/database"
@@ -10,24 +9,30 @@ import (
 	"strconv"
 
 	"github.com/sarulabs/di/v2"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-type App struct {
+type Desktop struct {
 	Container di.Container
-	Ctx       context.Context
+	App       application.App
+	Window    application.Window
 }
 
 var Embeds embed.FS
 
-func New(container di.Container) (app *App, err error) {
-	app = new(App)
-	app.Container = container
+func New(container di.Container) (desktop *Desktop, err error) {
+	desktop = new(Desktop)
+	desktop.Container = container
+
+	desktop.App = *application.New(application.Options{
+		Name:   "jamkstrecka",
+		Assets: application.AlphaAssets,
+	})
 
 	return
 }
 
-func (a *App) GetLatestTransactions() []models.LatestTransaction {
+func (a *Desktop) GetLatestTransactions() []models.LatestTransaction {
 	db := a.Container.Get(static.DiDatabase).(database.Database)
 	transactions, err := db.GetLatestTransactions()
 
@@ -38,7 +43,7 @@ func (a *App) GetLatestTransactions() []models.LatestTransaction {
 	return transactions
 }
 
-func (a *App) GetLeaderboard() []models.TransactionLeaderboard {
+func (a *Desktop) GetLeaderboard() []models.TransactionLeaderboard {
 	db := a.Container.Get(static.DiDatabase).(database.Database)
 	leaderboard, err := db.GetTransactionLeaderboard()
 
@@ -49,7 +54,7 @@ func (a *App) GetLeaderboard() []models.TransactionLeaderboard {
 	return leaderboard
 }
 
-func (a *App) ScanUpc(upc string) interface{} {
+func (a *Desktop) ScanUpc(upc string) interface{} {
 
 	db := a.Container.Get(static.DiDatabase).(database.Database)
 	log.Printf("scanning upc: %v", upc)
@@ -92,7 +97,7 @@ func (a *App) ScanUpc(upc string) interface{} {
 	return nil
 }
 
-func (a *App) Strecka(ProductID int64, UserID string, amount int64) (result interface{}) {
+func (a *Desktop) Strecka(ProductID int64, UserID string, amount int64) (result interface{}) {
 	db := a.Container.Get(static.DiDatabase).(database.Database)
 	err := db.Strecka(models.User{ID: UserID}, ProductID, amount)
 
@@ -135,7 +140,7 @@ func (a *App) Strecka(ProductID int64, UserID string, amount int64) (result inte
 		"balance": balance,
 	}
 
-	runtime.EventsEmit(a.Ctx, "transaction_updated")
+	a.App.Events.Emit(&application.WailsEvent{Name: "transaction_updated", Sender: static.DiDesktop})
 
 	return
 }

@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/zekrotja/ken"
 )
 
@@ -128,8 +128,8 @@ func (c *StreckaCommand) Run(ctx ken.Context) (err error) {
 		},
 	})
 
-	desktop := ctx.Get(static.DiDesktop).(*desktop.App)
-	runtime.EventsEmit(desktop.Ctx, "transaction_updated")
+	desktop := ctx.Get(static.DiDesktop).(*desktop.Desktop)
+	desktop.App.Events.Emit(&application.WailsEvent{Name: "transaction_updated", Sender: static.DiDesktop})
 
 	return
 }

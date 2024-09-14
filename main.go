@@ -1,131 +1,155 @@
 package main
 
 import (
-	"context"
 	"embed"
-	"fmt"
-	inits "gostrecka/internal/init"
-	"gostrecka/internal/service/database"
-	"gostrecka/internal/service/desktop"
-	"gostrecka/internal/utils/env"
-	"gostrecka/internal/utils/static"
-	"log"
+	"gostrecka/internal/utils/logger"
+	"log/slog"
+	"os"
+	"runtime"
+	"sync"
+	"time"
 
-	"github.com/bwmarrin/discordgo"
-	"github.com/sarulabs/di/v2"
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/logger"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/zekrotja/ken"
+	"github.com/lmittmann/tint"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 //go:embed all:frontend/dist
 var Assets embed.FS
 
-func main() {
-	desktop.Embeds = Assets
-
-	store, err := env.NewConfigStore()
-	if err != nil {
-		fmt.Printf("could not initialize the config store: %v\n", err)
-		return
-	}
-
-	fmt.Println(store.ConfigPath)
-
-	cfg, err := store.Config()
-	if err != nil {
-		fmt.Printf("could not retrieve the configuration: %v\n", err)
-		return
-	}
-
-	builder, _ := di.NewEnhancedBuilder()
-
-	builder.Add(&di.Def{Name: static.DiConfig, Build: func(ctn di.Container) (interface{}, error) { return cfg, nil }})
-
-	builder.Add(&di.Def{
-		Name: static.DiDatabase,
-		Build: func(ctn di.Container) (interface{}, error) {
-			return inits.InitDatabase(ctn), nil
-		},
-		Close: func(obj interface{}) error {
-			database := obj.(database.Database)
-			log.Println("Shutting down database connection...")
-			database.Close()
-			return nil
-		},
-	})
-
-	builder.Add(&di.Def{
-		Name: static.DiDiscordSession,
-		Build: func(ctn di.Container) (interface{}, error) {
-			return discordgo.New("")
-		},
-		Close: func(obj interface{}) error {
-			session := obj.(*discordgo.Session)
-			log.Println("Shutting down bot session...")
-			session.Close()
-			return nil
-		},
-	})
-
-	// Initialize command handler
-	builder.Add(&di.Def{
-		Name: static.DiCommandHandler,
-		Build: func(ctn di.Container) (interface{}, error) {
-			return inits.InitCommandHandler(ctn)
-		},
-		Close: func(obj interface{}) error {
-			log.Println("Unegister commands ...")
-			return obj.(*ken.Ken).Unregister()
-		},
-	})
-
-	builder.Add(&di.Def{
-		Name: static.DiDesktop,
-		Build: func(ctn di.Container) (interface{}, error) {
-			return desktop.New(ctn)
-		},
-	})
-
-	ctn, _ := builder.Build()
-	defer ctn.DeleteWithSubContainers()
-
-	ctn.Get(static.DiCommandHandler)
-	releaseShard := inits.InitDiscordBotSession(ctn)
-	defer releaseShard()
-
-	InitDesktop(ctn)
+type SharedResources struct {
+	DB     *Database
+	Config *Config
+	Logger *slog.Logger
 }
 
-func InitDesktop(container di.Container) (app *desktop.App) {
-	app = container.Get(static.DiDesktop).(*desktop.App)
+type AppContext struct {
+	WailsApp *application.App
+	Discord  *DiscordService
+	Shared   *SharedResources
+}
 
-	err := wails.Run(&options.App{
-		Title:    "gostrecka",
-		Width:    1024,
-		Height:   768,
-		Logger:   logger.NewDefaultLogger(),
-		LogLevel: logger.INFO,
-		AssetServer: &assetserver.Options{
-			Assets: Assets,
-		},
-		OnShutdown: func(ctx context.Context) {
-			log.Println("Shutting down...")
-			container.Delete()
-		},
-		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
-		OnStartup:        app.Startup,
-		OnDomReady:       app.OnDomReady,
-		Bind: []interface{}{
-			app,
-		},
-	})
+func main() {
+	runtime.LockOSThread()
 
-	if err != nil {
-		log.Fatal(err)
+	shared := initSharedResources()
+
+	var wg sync.WaitGroup
+	discordReady := make(chan struct{})
+
+	appCtx := &AppContext{
+		Shared: shared,
 	}
 
-	return
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		discord := NewDiscordService(shared, appCtx)
+		appCtx.Discord = discord
+		discord.Start()
+		close(discordReady)
+	}()
+
+	wailsApp := createApplication(shared, appCtx)
+	appCtx.WailsApp = wailsApp
+	createMainWindow(wailsApp)
+
+	<-discordReady
+
+	err := wailsApp.Run()
+	if err != nil {
+		shared.Logger.Error("Failed to run application", "error", err)
+		os.Exit(1)
+	}
+
+	wg.Wait()
+}
+
+func initSharedResources() *SharedResources {
+	logger := NewLogger()
+	return &SharedResources{
+		DB:     NewDatabase(logger),
+		Config: NewConfig(logger),
+		Logger: logger,
+	}
+}
+
+func createApplication(shared *SharedResources, appCtx *AppContext) *application.App {
+	return application.New(application.Options{
+		Name: "Jamkstrecka",
+		Assets: application.AssetOptions{
+			Handler:        application.AssetFileServerFS(Assets),
+			DisableLogging: true,
+		},
+		Logger: shared.Logger.With("service", "APP"),
+		// You can add services here if needed
+	})
+}
+
+func createMainWindow(app *application.App) {
+	app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
+		Name:             "Main Window",
+		Width:            1024,
+		Height:           768,
+		Title:            "Jamkstrecka",
+		URL:              "/",
+		BackgroundColour: application.NewRGB(27, 38, 54),
+		Mac: application.MacWindow{
+			InvisibleTitleBarHeight: 50,
+			Backdrop:                application.MacBackdropTranslucent,
+			TitleBar:                application.MacTitleBarHiddenInset,
+		},
+	})
+}
+
+type DiscordService struct {
+	shared *SharedResources
+	appCtx *AppContext
+	logger *slog.Logger
+}
+
+func NewDiscordService(shared *SharedResources, appCtx *AppContext) *DiscordService {
+	return &DiscordService{
+		shared: shared,
+		appCtx: appCtx,
+		logger: shared.Logger.With("service", "discord"),
+	}
+}
+
+func (d *DiscordService) Start() {
+	d.logger.Info("Discord service started")
+	// Initialize and start your Discord bot here
+}
+
+type Database struct {
+	logger *slog.Logger
+}
+
+func NewDatabase(logger *slog.Logger) *Database {
+	return &Database{logger: logger.With("service", "DATABASE")}
+}
+
+type Config struct {
+	logger *slog.Logger
+}
+
+func NewConfig(logger *slog.Logger) *Config {
+	return &Config{logger: logger.With("service", "CONFIG")}
+}
+
+func NewLogger() *slog.Logger {
+	w := os.Stdout
+
+	opts := &tint.Options{
+		Level:      slog.LevelInfo,
+		TimeFormat: time.TimeOnly,
+		NoColor:    false,
+		AddSource:  false,
+	}
+
+	handler := logger.NewSourceHandler(w, opts)
+
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
+
+	return logger
 }
