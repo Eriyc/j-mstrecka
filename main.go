@@ -13,6 +13,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/lmittmann/tint"
+	"github.com/sarulabs/di/v2"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/zekrotja/ken"
 )
@@ -20,89 +21,111 @@ import (
 //go:embed all:frontend/dist
 var Assets embed.FS
 
-type SharedResources struct {
-	DB     *Database
-	Config env.Config
-	Logger *slog.Logger
-}
-
-type AppContext struct {
-	WailsApp *application.App
-	Discord  *DiscordService
-	Shared   *SharedResources
-}
-
 func main() {
 	runtime.LockOSThread()
 
-	shared := initSharedResources()
+	builder, err := di.NewEnhancedBuilder()
+	if err != nil {
+		panic(err)
+	}
+
+	builder.Add(&di.Def{
+
+		Name: "logger",
+		Build: func(ctn di.Container) (interface{}, error) {
+			return NewLogger(), nil
+		},
+	})
+
+	builder.Add(&di.Def{
+		Name: "config",
+		Build: func(ctn di.Container) (interface{}, error) {
+			logger := ctn.Get("logger").(*slog.Logger)
+			configStore, err := env.NewConfigStore(logger.With("service", "CONFIG"))
+			if err != nil {
+				return nil, err
+			}
+			return configStore.Config()
+		},
+		Close: func(obj interface{}) error {
+			// If your Config needs any cleanup, do it here
+			return nil
+		},
+	})
+
+	builder.Add(&di.Def{
+		Name: "database",
+		Build: func(ctn di.Container) (interface{}, error) {
+			logger := ctn.Get("logger").(*slog.Logger)
+			return NewDatabase(logger), nil
+		},
+		Close: func(obj interface{}) error {
+			// If your Database needs any cleanup, do it here
+			return nil
+		},
+	})
+
+	builder.Add(&di.Def{Name: "discord_service",
+		Build: func(ctn di.Container) (interface{}, error) {
+			return NewDiscordService(ctn), nil
+		},
+		Close: func(obj interface{}) error {
+			service := obj.(*DiscordService)
+			return service.session.Close()
+		},
+	})
+
+	builder.Add(&di.Def{
+		Name: "wails_app",
+		Build: func(ctn di.Container) (interface{}, error) {
+			return createApplication(ctn), nil
+		},
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	ctn, _ := builder.Build()
+	defer ctn.DeleteWithSubContainers()
 
 	var wg sync.WaitGroup
 	discordReady := make(chan struct{})
 
-	appCtx := &AppContext{
-		Shared: shared,
-	}
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		discord := NewDiscordService(shared, appCtx)
-		appCtx.Discord = discord
+		discord := ctn.Get("discord_service").(*DiscordService)
 		discord.Start()
 		close(discordReady)
 	}()
 
-	wailsApp := createApplication(shared, appCtx)
-	appCtx.WailsApp = wailsApp
+	wailsApp := ctn.Get("wails_app").(*application.App)
 	createMainWindow(wailsApp)
 
 	<-discordReady
 
-	err := wailsApp.Run()
+	err = wailsApp.Run()
 	if err != nil {
-		shared.Logger.Error("Failed to run application", "error", err)
+		ctn.Get("logger").(*slog.Logger).Error("Failed to run application", "error", err)
 		os.Exit(1)
 	}
 
 	wg.Wait()
 }
 
-func initSharedResources() *SharedResources {
-	logger := NewLogger()
-
-	configStore, err := env.NewConfigStore(logger.With("service", "CONFIG"))
-	if err != nil {
-		logger.Error("Failed to create config store", "error", err, "service", "CONFIG")
-		os.Exit(1)
-	}
-
-	cfg, err := configStore.Config()
-	if err != nil {
-		configStore.Logger.Error("Failed to read config", "error", err)
-		os.Exit(1)
-	}
-
-	return &SharedResources{
-		DB:     NewDatabase(logger),
-		Config: cfg,
-		Logger: logger,
-	}
-}
-
-func createApplication(shared *SharedResources, appCtx *AppContext) *application.App {
+func createApplication(ctn di.Container) *application.App {
+	logger := ctn.Get("logger").(*slog.Logger)
 	return application.New(application.Options{
 		Name: "Jamkstrecka",
 		Assets: application.AssetOptions{
 			Handler:        application.AssetFileServerFS(Assets),
 			DisableLogging: true,
 		},
-		Logger: shared.Logger.With("service", "APP"),
+		Logger: logger.With("service", "APP"),
 		OnShutdown: func() {
-			shared.Logger.Info("Shutting down application...")
-			appCtx.Discord.session.Close()
+			logger.Info("Shutting down application...")
 		},
-		// You can add services here if needed
 	})
 }
 
@@ -123,36 +146,28 @@ func createMainWindow(app *application.App) {
 }
 
 type DiscordService struct {
-	shared  *SharedResources
-	appCtx  *AppContext
 	logger  *slog.Logger
 	session *discordgo.Session
 }
 
-func NewDiscordService(shared *SharedResources, appCtx *AppContext) *DiscordService {
-	shared.Logger.Info("Discord service starting...")
+func NewDiscordService(ctn di.Container) *DiscordService {
+	logger := ctn.Get("logger").(*slog.Logger)
+	config := ctn.Get("config").(env.Config)
+	logger.Info("Discord service starting...")
 
-	session, err := discordgo.New("Bot " + shared.Config.DiscordToken)
+	session, err := discordgo.New("Bot " + config.DiscordToken)
 	if err != nil {
-		shared.Logger.Error("Failed to create discord session", "error", err)
+		logger.Error("Failed to create discord session", "error", err)
 		return nil
 	}
 
 	return &DiscordService{
-		shared:  shared,
-		appCtx:  appCtx,
-		logger:  shared.Logger.With("service", "DISCORD"),
+		logger:  logger.With("service", "DISCORD"),
 		session: session,
 	}
 }
 
-func (d *DiscordService) Get(key string) interface{} {
-	// help
-	return interface{}
-}
-
 func (d *DiscordService) Start() {
-
 	k, err := ken.New(d.session, ken.Options{})
 	if err != nil {
 		d.logger.Error("Failed to create ken", "error", err)
