@@ -38,3 +38,27 @@ export type ProductResponse = {
   product: Product;
   price: ProductPrice;
 };
+
+export type TransactionLeaderboard = {
+  id: number;
+  user_id: string;
+  product_id: number;
+  cumulative_transaction_count: number;
+  transaction_count: number;
+  transaction_date: Date;
+
+  plater_rank: number;
+  current_rank: number;
+  rank_change_indicator: "↑" | "↓" | "=" | "New";
+  user_name: string;
+  total_transaction_count: number;
+};
+
+export type Transaction = {
+  id: number;
+  user_id: string;
+  product_id: number;
+  cumulative_transaction_count: number;
+  transaction_count: number;
+  transaction_date: Date;
+};

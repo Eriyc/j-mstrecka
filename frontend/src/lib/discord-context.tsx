@@ -5,6 +5,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import * as wails from "@wailsio/runtime";
 
 type DiscordApplication = {
   icon_url: string;
@@ -16,22 +17,18 @@ export const DiscordProvider = ({ children }: PropsWithChildren) => {
   const [discord, setDiscord] = useState<DiscordApplication | null>(null);
 
   useEffect(() => {
-    const isOnWails = !!window.runtime;
+    wails.Events.Emit({ name: "discord_check", data: {} });
+    wails.Events.On(
+      "discord_ready",
+      ({ data }: { data: DiscordApplication | null }) => {
+        console.log(data);
 
-    if (isOnWails) {
-      window.runtime.EventsEmit("discord_check");
-      window.runtime.EventsOn(
-        "discord_ready",
-        (bot: DiscordApplication | null) => {
-          setDiscord(bot);
-        }
-      );
-    }
+        setDiscord(data);
+      }
+    );
 
     return () => {
-      if (isOnWails) {
-        window.runtime.EventsOff("discord_ready");
-      }
+      wails.Events.Off("discord_ready");
     };
   }, []);
 

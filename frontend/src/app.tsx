@@ -2,13 +2,15 @@ import { useCallback, useState } from "react";
 import DiscordStatus from "./components/discord-status";
 import { DrinkChart } from "./components/comptetitive-chart";
 import { Leaderboard } from "./components/leaderboard";
-import { ScanUpc, Strecka } from "@/../wailsjs/go/desktop/App";
 import { ProductResponse, UserResponse } from "./types";
 import { UserInfo } from "./components/user-info";
 import { ProductInfo } from "./components/product-info";
 import { useToast } from "./lib/toast-context";
 import { useTransactions } from "./lib/transaction-context";
 import { useKeyboardListener } from "./hooks/use-keyboard-listener";
+
+/* @ts-ignore */
+import * as Service from "@/../bindings/gostrecka/services/transactions/transactionservice";
 
 function App() {
   const { transactions } = useTransactions();
@@ -21,7 +23,7 @@ function App() {
 
   const onScan = useCallback(
     async (upc: string) => {
-      const result = await ScanUpc(upc);
+      const result = await Service.ScanUpc(upc);
       if (result === null) {
         setError("Scan failed");
         return;
@@ -38,9 +40,7 @@ function App() {
             product: newProduct,
             balance,
             error,
-          } = await Strecka(p.product.id, user.user.id, amount).catch((err) =>
-            console.error("error strecka:", err)
-          );
+          } = await Service.Strecka(p.product.id, user.user.id, amount);
 
           console.log(error, newUser);
 

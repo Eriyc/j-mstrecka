@@ -1,7 +1,6 @@
 import { createContext, PropsWithChildren, useContext, useState } from "react";
 import { cn } from "./utils";
 import { CheckCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface Toast {
   id: number;
