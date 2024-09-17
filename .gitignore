@@ -4,4 +4,4 @@ frontend/dist
 .env
 
 jamkstrecka
-bin
+bin/*
