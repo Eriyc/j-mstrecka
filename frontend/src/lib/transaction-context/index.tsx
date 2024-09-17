@@ -1,11 +1,12 @@
 import React, { PropsWithChildren, useEffect, useState } from "react";
-import {
-  GetLatestTransactions,
-  GetLeaderboard,
-} from "@/../wailsjs/go/desktop/App";
-import { models } from "wailsjs/go/models";
+
 import { ChartDomain, Transaction, TransactionChartData } from "./types";
 import { convertTransactionsToChartData } from "./transform";
+import * as wails from "@wailsio/runtime";
+
+/* @ts-ignore */
+import * as Service from "@/../bindings/gostrecka/services/transactions/transactionservice";
+import { TransactionLeaderboard } from "@/types";
 
 type TransactionContextType = {
   transactions: {
@@ -13,7 +14,7 @@ type TransactionContextType = {
     domain: ChartDomain;
     ticks: number[];
   };
-  leaderboard: models.TransactionLeaderboard[];
+  leaderboard: TransactionLeaderboard[];
   refetch: () => Promise<void>;
 };
 
@@ -23,19 +24,17 @@ const TransactionContext = React.createContext<
 
 export const TransactionProvider = ({ children }: PropsWithChildren) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [leaderboard, setLeaderboard] = useState<
-    models.TransactionLeaderboard[]
-  >([]);
+  const [leaderboard, setLeaderboard] = useState<TransactionLeaderboard[]>([]);
 
   const refetch = async () => {
-    const response = await GetLatestTransactions();
-    const leaderboard = await GetLeaderboard();
+    const response = await Service.GetLatestTransactions();
+    const leaderboard = await Service.GetLeaderboard();
 
     if (!response) {
       return;
     }
 
-    const transactions = response.map((transaction) => ({
+    const transactions = response.map((transaction: Transaction) => ({
       ...transaction,
       transaction_date: new Date(transaction.transaction_date),
     }));
@@ -46,9 +45,9 @@ export const TransactionProvider = ({ children }: PropsWithChildren) => {
   useEffect(() => {
     refetch();
 
-    window.runtime.EventsOn("transaction_updated", refetch);
+    wails.Events.On("transaction_updated", refetch);
     return () => {
-      window.runtime.EventsOff("transaction_updated");
+      wails.Events.Off("transaction_updated");
     };
   }, []);
 

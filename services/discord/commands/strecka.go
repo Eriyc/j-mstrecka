@@ -2,10 +2,9 @@ package commands
 
 import (
 	"fmt"
-	"gostrecka/internal/service/database"
-	"gostrecka/internal/service/desktop"
-	commandutils "gostrecka/internal/utils/commands"
 	"gostrecka/internal/utils/static"
+	"gostrecka/services/database"
+	"gostrecka/services/discord"
 	"log"
 	"strconv"
 
@@ -66,7 +65,7 @@ func (c *StreckaCommand) Options() []*discordgo.ApplicationCommandOption {
 }
 
 func (c *StreckaCommand) Autocomplete(ctx *ken.AutocompleteContext) ([]*discordgo.ApplicationCommandOptionChoice, error) {
-	return commandutils.AutocompleteOption(ctx)
+	return discord.AutocompleteOption(ctx)
 }
 
 func (c *StreckaCommand) IsDmCapable() bool {
@@ -94,7 +93,7 @@ func (c *StreckaCommand) Run(ctx ken.Context) (err error) {
 		return ctx.RespondError("Intern fel", "Fel")
 	}
 
-	product, price, err := ctx.Get(static.DiDatabase).(database.Database).GetProductIdent(ProductID)
+	product, price, err := ctx.Get("database").(database.Database).GetProductIdent(ProductID)
 	if err != nil {
 		fmt.Printf("error getting product: %v", err)
 		return ctx.RespondError("Produkten hittades inte", "Fel")
@@ -111,7 +110,7 @@ func (c *StreckaCommand) Run(ctx ken.Context) (err error) {
 		response += " åt dig"
 	}
 
-	db := ctx.Get(static.DiDatabase).(database.Database)
+	db := ctx.Get("database").(database.Database)
 	userStruct, _, err := db.GetUser(discordUser.ID)
 
 	if err != nil {
@@ -128,8 +127,8 @@ func (c *StreckaCommand) Run(ctx ken.Context) (err error) {
 		},
 	})
 
-	desktop := ctx.Get(static.DiDesktop).(*desktop.Desktop)
-	desktop.App.Events.Emit(&application.WailsEvent{Name: "transaction_updated", Sender: static.DiDesktop})
+	desktop := ctx.Get("app").(*application.App)
+	desktop.Events.Emit(&application.WailsEvent{Name: "transaction_updated", Sender: static.DiDesktop})
 
 	return
 }

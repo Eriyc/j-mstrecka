@@ -16,7 +16,6 @@ require (
 	github.com/tursodatabase/go-libsql v0.0.0-20240819180805-a9b092b8bc77
 	github.com/wailsapp/wails/v3 v3.0.0-alpha.6
 	github.com/zekrotja/ken v0.20.1
-	go.uber.org/fx v1.22.2
 	gopkg.in/yaml.v3 v3.0.1
 
 )
@@ -63,9 +62,6 @@ require (
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/zekrotja/dgrs v0.5.7 // indirect
 	github.com/zekrotja/safepool v1.1.0 // indirect
-	go.uber.org/dig v1.18.0 // indirect
-	go.uber.org/multierr v1.10.0 // indirect
-	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/crypto v0.27.0 // indirect
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
 	golang.org/x/mod v0.21.0 // indirect

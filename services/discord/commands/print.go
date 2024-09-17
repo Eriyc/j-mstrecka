@@ -2,9 +2,8 @@ package commands
 
 import (
 	"fmt"
-	"gostrecka/internal/service/database"
-	"gostrecka/internal/utils/pdf"
-	"gostrecka/internal/utils/static"
+	"gostrecka/services/database"
+	"gostrecka/utils"
 	"os"
 
 	"github.com/bwmarrin/discordgo"
@@ -32,26 +31,26 @@ func (p *PrintCommand) Options() []*discordgo.ApplicationCommandOption {
 func (p *PrintCommand) Run(ctx ken.Context) (err error) {
 	messageId := ctx.GetEvent().ID
 
-	db := ctx.Get(static.DiDatabase).(database.Database)
+	db := ctx.Get("database").(database.Database)
 
 	upcRows, _ := db.GetUserUpcs()
 	productRows, _ := db.GetProductUpcs()
 
-	var users []pdf.BarcodeInfo
+	var users []utils.BarcodeInfo
 	for _, upc := range upcRows {
-		users = append(users, pdf.BarcodeInfo{Number: upc.Upc, Label: upc.ReferableName})
+		users = append(users, utils.BarcodeInfo{Number: upc.Upc, Label: upc.ReferableName})
 	}
 
-	var products []pdf.BarcodeInfo
+	var products []utils.BarcodeInfo
 	for _, upc := range productRows {
-		products = append(products, pdf.BarcodeInfo{Number: upc.Upc, Label: upc.ReferableName})
+		products = append(products, utils.BarcodeInfo{Number: upc.Upc, Label: upc.ReferableName})
 	}
 
-	err = pdf.GenerateBarcodePDF(users, fmt.Sprintf("%s-users.pdf", messageId))
+	err = utils.GenerateBarcodePDF(users, fmt.Sprintf("%s-users.pdf", messageId))
 	if err != nil {
 		return ctx.RespondError(err.Error(), "Error generating user barcode PDF")
 	}
-	err = pdf.GenerateBarcodePDF(products, fmt.Sprintf("%s-products.pdf", messageId))
+	err = utils.GenerateBarcodePDF(products, fmt.Sprintf("%s-products.pdf", messageId))
 	if err != nil {
 		return ctx.RespondError(err.Error(), "Error generating product barcode PDF")
 	}

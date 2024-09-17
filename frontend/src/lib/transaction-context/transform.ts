@@ -1,4 +1,3 @@
-import { addHours } from "date-fns";
 import { ChartDomain, Transaction, TransactionChartData } from "./types";
 
 function convertTransactionsToChartData(transactions: Transaction[]): {

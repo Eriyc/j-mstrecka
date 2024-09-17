@@ -3,8 +3,8 @@ package commands
 import (
 	"database/sql"
 	"fmt"
-	"gostrecka/internal/service/database"
 	"gostrecka/internal/utils/static"
+	"gostrecka/services/database"
 	"log"
 
 	"github.com/bwmarrin/discordgo"

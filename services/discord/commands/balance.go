@@ -2,8 +2,8 @@ package commands
 
 import (
 	"fmt"
-	"gostrecka/internal/service/database"
 	"gostrecka/internal/utils/static"
+	"gostrecka/services/database"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/zekrotja/ken"

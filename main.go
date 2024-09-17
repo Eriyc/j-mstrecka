@@ -2,9 +2,13 @@ package main
 
 import (
 	"embed"
-	"gostrecka/internal/utils/logger"
+	"flag"
+	"fmt"
+	"gostrecka/services/database/sqlite"
 	"gostrecka/services/discord/commands"
 	"gostrecka/services/env"
+	"gostrecka/services/transactions"
+	"gostrecka/utils"
 	"log/slog"
 	"os"
 	"runtime"
@@ -18,10 +22,18 @@ import (
 	"github.com/zekrotja/ken"
 )
 
+var nFlag = flag.Bool("v", false, "Version")
+
 //go:embed all:frontend/dist
 var Assets embed.FS
 
 func main() {
+	flag.Parse()
+	if *nFlag {
+		fmt.Println("Version: 0.0.1")
+		return
+	}
+
 	runtime.LockOSThread()
 
 	builder, err := di.NewEnhancedBuilder()
@@ -56,8 +68,14 @@ func main() {
 	builder.Add(&di.Def{
 		Name: "database",
 		Build: func(ctn di.Container) (interface{}, error) {
-			logger := ctn.Get("logger").(*slog.Logger)
-			return NewDatabase(logger), nil
+			db := sqlite.New(ctn)
+			err := db.Connect()
+
+			if err != nil {
+				return nil, err
+			}
+
+			return db, nil
 		},
 		Close: func(obj interface{}) error {
 			// If your Database needs any cleanup, do it here
@@ -76,15 +94,11 @@ func main() {
 	})
 
 	builder.Add(&di.Def{
-		Name: "wails_app",
+		Name: "app",
 		Build: func(ctn di.Container) (interface{}, error) {
 			return createApplication(ctn), nil
 		},
 	})
-
-	if err != nil {
-		panic(err)
-	}
 
 	ctn, _ := builder.Build()
 	defer ctn.DeleteWithSubContainers()
@@ -100,12 +114,22 @@ func main() {
 		close(discordReady)
 	}()
 
-	wailsApp := ctn.Get("wails_app").(*application.App)
+	wailsApp := ctn.Get("app").(*application.App)
 	createMainWindow(wailsApp)
 
 	<-discordReady
 
+	wailsApp.Events.On("discord_check", func(ev *application.WailsEvent) {
+		discord := ctn.Get("discord_service").(*DiscordService)
+		if discord.session.State.Ready.SessionID != "" {
+			wailsApp.Events.Emit(&application.WailsEvent{Name: "discord_ready", Sender: "App", Data: map[string]interface{}{
+				"name":     discord.session.State.Ready.User.Username,
+				"icon_url": discord.session.State.Ready.User.AvatarURL("64x64"),
+			}})
+		}
+	})
 	err = wailsApp.Run()
+
 	if err != nil {
 		ctn.Get("logger").(*slog.Logger).Error("Failed to run application", "error", err)
 		os.Exit(1)
@@ -123,6 +147,9 @@ func createApplication(ctn di.Container) *application.App {
 			DisableLogging: true,
 		},
 		Logger: logger.With("service", "APP"),
+		Services: []application.Service{
+			application.NewService(transactions.New(ctn)),
+		},
 		OnShutdown: func() {
 			logger.Info("Shutting down application...")
 		},
@@ -145,9 +172,18 @@ func createMainWindow(app *application.App) {
 	})
 }
 
+type ContainerAdapter struct {
+	container di.Container
+}
+
+func (a *ContainerAdapter) Get(key string) interface{} {
+	return a.container.Get(key)
+}
+
 type DiscordService struct {
-	logger  *slog.Logger
-	session *discordgo.Session
+	container di.Container
+	logger    *slog.Logger
+	session   *discordgo.Session
 }
 
 func NewDiscordService(ctn di.Container) *DiscordService {
@@ -156,19 +192,24 @@ func NewDiscordService(ctn di.Container) *DiscordService {
 	logger.Info("Discord service starting...")
 
 	session, err := discordgo.New("Bot " + config.DiscordToken)
+	session.Identify.Intents |= discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsDirectMessages
+
 	if err != nil {
 		logger.Error("Failed to create discord session", "error", err)
 		return nil
 	}
 
 	return &DiscordService{
-		logger:  logger.With("service", "DISCORD"),
-		session: session,
+		logger:    logger.With("service", "DISCORD"),
+		session:   session,
+		container: ctn,
 	}
 }
 
 func (d *DiscordService) Start() {
-	k, err := ken.New(d.session, ken.Options{})
+	k, err := ken.New(d.session, ken.Options{
+		DependencyProvider: &ContainerAdapter{container: d.container},
+	})
 	if err != nil {
 		d.logger.Error("Failed to create ken", "error", err)
 		return
@@ -195,14 +236,11 @@ func (d *DiscordService) Start() {
 	}
 
 	d.logger.Info("Discord service started", "bot_name", d.session.State.Ready.User.Username)
-}
-
-type Database struct {
-	logger *slog.Logger
-}
-
-func NewDatabase(logger *slog.Logger) *Database {
-	return &Database{logger: logger.With("service", "DATABASE")}
+	wails := d.container.Get("app").(*application.App)
+	wails.Events.Emit(&application.WailsEvent{Name: "discord_ready", Sender: "Discord", Data: map[string]interface{}{
+		"name":     d.session.State.Ready.User.Username,
+		"icon_url": d.session.State.Ready.User.AvatarURL("64x64"),
+	}})
 }
 
 func NewLogger() *slog.Logger {
@@ -212,10 +250,10 @@ func NewLogger() *slog.Logger {
 		Level:      slog.LevelDebug,
 		TimeFormat: time.TimeOnly,
 		NoColor:    false,
-		AddSource:  false,
+		AddSource:  true,
 	}
 
-	handler := logger.NewSourceHandler(w, opts)
+	handler := utils.NewSourceHandler(w, opts)
 
 	logger := slog.New(handler)
 	slog.SetDefault(logger)

@@ -2,9 +2,9 @@ package commands
 
 import (
 	"fmt"
-	"gostrecka/internal/service/database"
-	commandutils "gostrecka/internal/utils/commands"
 	"gostrecka/internal/utils/static"
+	"gostrecka/services/database"
+	"gostrecka/services/discord"
 	"log"
 	"strconv"
 
@@ -138,7 +138,7 @@ func (c *ProductCommand) IsDmCapable() bool {
 }
 
 func (c *ProductCommand) Autocomplete(ctx *ken.AutocompleteContext) ([]*discordgo.ApplicationCommandOptionChoice, error) {
-	return commandutils.AutocompleteSubcommand(ctx)
+	return discord.AutocompleteSubcommand(ctx)
 }
 
 func (c *ProductCommand) Run(ctx ken.Context) (err error) {
