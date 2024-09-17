@@ -32,12 +32,12 @@ jobs:
       - uses: oven-sh/setup-bun@v2
 
       - name: Install linux dependencies
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.build.os == 'ubuntu-22.04'
         run: sudo apt-get update -y && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev javascriptcoregtk-4.1-dev build-essential pkg-config
 
       - uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go }}
+          go-version: ${{ matrix.build.go }}
           cache-dependency-path: "v3/go.sum"
 
       - name: Install Wails
