@@ -21,6 +21,7 @@ jobs:
             platform: "linux/amd64"
             os: "ubuntu-22.04"
             go: 1.23
+            artifact: /home/runner/work/j-mstrecka/j-mstrecka/build/appimage/jamkstrecka-x86_64.AppImage
 
     runs-on: ${{ matrix.build.os }}
     steps:
@@ -81,5 +82,5 @@ jobs:
         with:
           asset_content_type: "application/octet-stream"
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/bin/${{ matrix.build.name }}
+          asset_path: ${{ matrix.build.artifact }}
           asset_name: ${{ matrix.build.name }}
