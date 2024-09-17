@@ -141,7 +141,7 @@ tasks:
         vars:
           ARCH: '{{.ARCH}}'
     cmds:
-      - go build {{.BUILD_FLAGS}} -o {{.BIN_DIR}}/jamkstrecka
+      - go build {{.BUILD_FLAGS}} -o {{.BIN_DIR}}/jamkstrecka-amd64
     vars:
       BUILD_FLAGS: '{{if eq .PRODUCTION "true"}}-tags production -trimpath -ldflags="-w -s"{{else}}-gcflags=all="-l"{{end}}'
     env:
@@ -312,7 +312,7 @@ tasks:
       # Generate AppImage
       - wails3 generate appimage -binary {{.APP_NAME}} -icon {{.ICON}} -desktopfile {{.DESKTOP_FILE}} -outputdir {{.OUTPUT_DIR}} -builddir {{.ROOT_DIR}}/build/appimage
     vars:
-      APP_NAME: '{{.APP_NAME}}'
+      APP_NAME: '{{.APP_NAME}}-amd64'
       APP_BINARY: '../../bin/{{.APP_NAME}}'
       ICON: '../appicon.png'
       DESKTOP_FILE: '{{.APP_NAME}}.desktop'
@@ -338,7 +338,7 @@ tasks:
       # -mimetype "application/x-extension1;application/x-extension2;"
 
     vars:
-      APP_NAME: '{{.APP_NAME}}'
+      APP_NAME: '{{.APP_NAME}}-amd64'
       EXEC: '{{.APP_NAME}}'
       ICON: 'appicon'
       CATEGORIES: 'Development;'

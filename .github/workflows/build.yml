@@ -21,7 +21,7 @@ jobs:
             platform: "linux/amd64"
             os: "ubuntu-22.04"
             go: 1.23
-            artifact: /home/runner/work/j-mstrecka/j-mstrecka/build/appimage/jamkstrecka-x86_64.AppImage
+            artifact: /home/runner/work/j-mstrecka/j-mstrecka/bin/jamkstrecka-amd64
 
     runs-on: ${{ matrix.build.os }}
     steps:
@@ -51,7 +51,9 @@ jobs:
 
       - name: Build Linux
         if: matrix.build.platform == 'linux/amd64'
-        run: task package:linux
+        run: | 
+          task build:linux:prod:amd64
+
         env:
           CGO_ENABLED: 1
           GOARCH: amd64
