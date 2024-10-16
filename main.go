@@ -222,6 +222,7 @@ func (d *DiscordService) Start() {
 		new(commands.ProductCommand),
 		new(commands.BalanceCommand),
 		new(commands.PrintCommand),
+		new(commands.MenuCommand),
 	)
 
 	if err != nil {

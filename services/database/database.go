@@ -30,4 +30,5 @@ type Database interface {
 	Strecka(user models.User, productId int64, amount int64) error
 	GetLatestTransactions() (transactions []models.LatestTransaction, err error)
 	GetTransactionLeaderboard() (leaderboard []models.TransactionLeaderboard, err error)
+	GetTransactionNumbers(UserId string) (items []models.TransactionNumber, err error)
 }

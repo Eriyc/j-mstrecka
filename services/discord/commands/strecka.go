@@ -107,7 +107,7 @@ func (c *StreckaCommand) Run(ctx ken.Context) (err error) {
 		response += fmt.Sprintf(" åt %s", discordUser.Mention())
 	} else {
 		discordUser = ctx.User()
-		response += " åt dig"
+		response += discordUser.Mention()
 	}
 
 	db := ctx.Get("database").(database.Database)

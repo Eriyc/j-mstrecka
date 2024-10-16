@@ -45,11 +45,13 @@ func (p *PrintCommand) Run(ctx ken.Context) (err error) {
 	for _, upc := range productRows {
 		products = append(products, utils.BarcodeInfo{Number: upc.Upc, Label: upc.ReferableName})
 	}
+	
 
 	err = utils.GenerateBarcodePDF(users, fmt.Sprintf("%s-users.pdf", messageId))
 	if err != nil {
 		return ctx.RespondError(err.Error(), "Error generating user barcode PDF")
 	}
+
 	err = utils.GenerateBarcodePDF(products, fmt.Sprintf("%s-products.pdf", messageId))
 	if err != nil {
 		return ctx.RespondError(err.Error(), "Error generating product barcode PDF")

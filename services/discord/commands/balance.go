@@ -63,6 +63,18 @@ func (c *BalanceCommand) Run(ctx ken.Context) (err error) {
 		total = fmt.Sprintf("%.02fkr i skuld", balance.TotalDebtIncurred-balance.TotalCreditsEarned)
 	}
 
+	numbers, err := db.GetTransactionNumbers(user.ID)
+
+	if err != nil {
+		ctx.FollowUpError("Användaren finns inte", "")
+	}
+
+	var list = ""
+
+	for numer := range numbers {
+		list += fmt.Sprintf("%s x%d (%.02f kr)\n", numbers[numer].ProductName, numbers[numer].Quantity, numbers[numer].PricePaid)
+	}
+
 	err = ctx.RespondEmbed(&discordgo.MessageEmbed{
 		Title:       "Saldo",
 		Description: fmt.Sprintf("Saldo för <@%s>", user.ID),
@@ -80,6 +92,10 @@ func (c *BalanceCommand) Run(ctx ken.Context) (err error) {
 				Name:   "Totalt saldo",
 				Value:  fmt.Sprintf("%.02fkr", balance.TotalCreditsEarned),
 				Inline: true,
+			},
+			{
+				Name:  "Totalt",
+				Value: list,
 			},
 		},
 	})

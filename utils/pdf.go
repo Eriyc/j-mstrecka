@@ -21,7 +21,7 @@ func GenerateBarcodePDF(barcodes []BarcodeInfo, outputPath string) error {
 	// PDF settings
 	pageWidth, _ := 210.0, 297.0
 	margin := 10.0
-	barcodeWidth, barcodeHeight := 75.0, 30.0
+	barcodeWidth, barcodeHeight := (pageWidth-margin*2-10.0)/2.0, 30.0
 	labelHeight := 10.0
 	horizontalSpacing, verticalSpacing := pageWidth-margin*2-barcodeWidth*2, 5.0
 

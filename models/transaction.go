@@ -23,3 +23,10 @@ type TransactionLeaderboard struct {
 	RankChangeIndicator   string `json:"rank_change_indicator"`
 	TotalTransactionCount int64  `json:"total_transaction_count"`
 }
+
+type TransactionNumber struct {
+	ProductID   int64   `json:"product_id"`
+	ProductName string  `json:"product_name"`
+	Quantity    int64   `json:"quantity"`
+	PricePaid   float64 `json:"price_paid"`
+}

@@ -555,3 +555,49 @@ func (m *SqliteMiddleware) GetProductUpcs() (upcs []models.Upc, err error) {
 
 	return
 }
+
+func (m *SqliteMiddleware) GetTransactionNumbers(UserId string) (items []models.TransactionNumber, err error) {
+	rows, err := m.Db.Query(`
+		SELECT
+			t.product_id,
+			p.name,
+			SUM(t.quantity) AS quantity,
+			SUM(t.price_paid) AS price_paid
+		FROM
+			transactions t
+		LEFT JOIN
+			products p ON t.product_id = p.id
+		WHERE
+			t.user_id = $1
+		GROUP BY
+			t.product_id
+		ORDER BY
+			quantity DESC
+		LIMIT 10;
+	`, UserId)
+
+	if err != nil {
+		fmt.Printf("errro: %v\n", err)
+		return
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var item models.TransactionNumber
+		err = rows.Scan(
+			&item.ProductID,
+			&item.ProductName,
+			&item.Quantity,
+			&item.PricePaid,
+		)
+
+		if err != nil {
+			fmt.Printf("errro: %v\n", err)
+			return
+		}
+
+		items = append(items, item)
+	}
+
+	return
+}
